@@ -1,109 +1,73 @@
-\#include "ScisSos.h"
+#include "ScisSos.h"
 
-\#include \<sys/time.h>
+static ScisSosInst **generate_process_instructions(int size, int p_type) {
+    ScisSosInst **code = (ScisSosInst **)malloc(size * sizeof(ScisSosInst *));
+    double threshold = (p_type == PT_CMP) ? CMP_THR : (p_type == PT_IOE) ? IOE_THR : REG_THR;
 
-ScisSosProcess \*scissos_proc_create(char \* *name*, int *size*, int *priority*, int *pid*){
-
-    ScisSosProcess \*p = (ScisSosProcess \*)malloc(sizeof(ScisSosProcess));
-
-    if(p ==NULL){return NULL;}
-
-    p->\_PID = pid;
-
-    p->\_psize = size;
-
-    strcpy(p->\_pname, name);
-
-    ScisSosPCB \*pcb = (ScisSosPCB \*)malloc(sizeof(ScisSosPCB));
-
-    if(pcb==NULL){return NULL;}
-
-    p->\_pcb = pcb;
-
-    pcb->pid = pid;
-
-    pcb->uid = 1;
-
-    pcb->size = size;
-
-    pcb->state=PS_RDY;
-
-    proctable[pid] = pcb;
-
-    int ty=rand()%3;;
-
-    int long_p;
-
-    if(ty==0){
-
-        pcb->p_type=PT_REG;
-
-        long_p=REG_THR;
-
-    }else if(ty==1){
-
-        pcb->p_type=PT_CMP;
-
-        long_p=CMP_THR;
-
-    }else{
-
-        pcb->p_type=PT_IOE;
-
-        long_p=IOE_THR;
-
-    }
-
-    p->\_CODE = (ScisSosInst \*\*)malloc(sizeof(ScisSosInst \*)\*size);
-
-    if(p->\_CODE==NULL){return NULL;}
-
-    for(int i=0;i\<size;i++){
-
-        p->\_CODE[i] = (ScisSosInst \*)malloc(sizeof(ScisSosInst));
-
-        if(p->\_CODE[i]==NULL){return NULL;}
-
-        p->\_CODE[i]->\_inum = i;
-
-        p->\_CODE[i]->\_addref = 100;
-
-        if(rand()/RAND_MAX\<long_p){
-
-            p->\_CODE[i]->\_syscall = INS_LNG;
-
-        }else{
-
-            p->\_CODE[i]->\_syscall = INS_SHR;
-
-        }
-
-    }
-
-    gettimeofday(&pr_times[pid].crt_time, NULL);
-
-    return p;
-
+    for (int i = 0; i < size; i++) {
+        code[i] = (ScisSosInst *)malloc(sizeof(ScisSosInst));
+        code[i]->_inum = i;
+        double random_val = (double)rand() / (double)RAND_MAX;
+        if (random_val < threshold) {
+            code[i]->_syscall = INS_LNG;
+            code[i]->_addref = 100 + i;
+        } else {
+            code[i]->_syscall = INS_SHR;
+            code[i]->_addref = 200 + i;
+        }
+    }
+    return code;
 }
 
-int scissos_proc_run(int *pid*){
+ScisSosProcess *scissos_proc_create(char *pname, int size, int prio, int p_type) {
+    static int auto_pid = 1;
+    int pid = auto_pid++;
+    if (pid >= MAXPROC) return NULL;
 
-    if(pid<1 || pid>MAXPROC){return -1;}
+    ScisSosProcess *proc = (ScisSosProcess *)malloc(sizeof(ScisSosProcess));
+    proc->_PID = pid;
+    proc->_psize = size;
+    strncpy(proc->_pname, pname, MAXPROCNAME - 1);
 
-    ScisSosPCB \*pcb=proctable[pid]->\_pcb;
+    ScisSosPCB *pcb = (ScisSosPCB *)malloc(sizeof(ScisSosPCB));
+    proc->_pcb = pcb;
+    proc->_CODE = generate_process_instructions(size, p_type);
+    
+    pcb->pid = pid;
+    pcb->uid = 1;
+    pcb->size = size;
+    pcb->priority_value = prio;
+    pcb->ps_state = PS_RDY;
+    pcb->p_type = p_type;
+    pcb->m_type = 0;
+    pcb->pc = 0;
+    pcb->p_code = proc->_CODE;
+    pcb->p_timeslice = DEFTS;
 
-    if(pcb==NULL){return -1;}
+    _proctable[pid] = pcb;
+    
+    struct timeval now;
+    gettimeofday(&now, NULL);
+    pr_times[pid].crt_time = _diff_times(now, _basetime);
+    pr_times[pid].rsp_time.tv_sec = 0; pr_times[pid].rsp_time.tv_usec = 0;
+    pr_times[pid].wt_time.tv_sec = 0;  pr_times[pid].wt_time.tv_usec = 0;
+    pr_times[pid].run_time.tv_sec = 0; pr_times[pid].run_time.tv_usec = 0;
+    pr_times[pid].comp_time.tv_sec = 0; pr_times[pid].comp_time.tv_usec = 0;
 
-    if(pcb->state!=PS_RDY){return -1;}
+    printf("[PROCESS CREATED] PID %d ('%s') created.\n", pid, pname);
+    enqueue_ready(pid);
+    return proc;
+}
 
-    pcb->state=PS_RUN;
+int scissos_proc_run(int pid) {
+    if (pid < 0 || pid >= MAXPROC || _proctable[pid] == NULL) return -1;
+    _proctable[pid]->ps_state = PS_RUN;
 
-    if(pcb->pc==0){gettimeofday(&pr_times[pid].rsp_time, NULL);}
-
-    struct timeval t;
-
-    gettimeofday(&t, NULL);
-
-    return 0;
-
+    if (pid > 0 && pr_times[pid].rsp_time.tv_sec == 0 && pr_times[pid].rsp_time.tv_usec == 0) {
+        struct timeval now;
+        gettimeofday(&now, NULL);
+        struct timeval elapsed = _diff_times(now, _basetime);
+        pr_times[pid].rsp_time = _diff_times(elapsed, pr_times[pid].crt_time);
+    }
+    return 0;
 }
