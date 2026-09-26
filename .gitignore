@@ -1,0 +1,8 @@
+# Ignore compiled binaries and object files
+*.o
+*.exe
+build/
+bin/
+
+# Ignore VS Code local workspace settings
+.vscode/
