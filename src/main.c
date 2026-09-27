@@ -1,17 +1,57 @@
 #include "ScisSos.h"
 
-int main(void) {
+
+/*
+ * Implemented in simulator.c
+ */
+void run_simulation(void);
+
+
+int main(int argc, char *argv[])
+{
+    /*
+     * The scheduling algorithm is selected at
+     * compile time through SCHEDFUNC in ScisSos.h.
+     *
+     * Therefore this main simply initialises
+     * and runs the simulator.
+     */
+
+
+    printf(
+        "\n============================================================\n"
+    );
+
+    printf(
+        "             ADVANCED OPERATING SYSTEM SIMULATOR\n"
+    );
+
+    printf(
+        "============================================================\n"
+    );
+
+
+    /*
+     * Avoid compiler warning if argc/argv are unused.
+     */
+
+    (void)argc;
+    (void)argv;
+
+
+    /*
+     * Initialise operating system.
+     */
+
     scissos_initialise();
 
-    int algo_choice = 1; /* 1 = FIFO, 2 = Round Robin */
-    int total_processes_to_generate = 4;
 
-    printf("\nStarting OS Execution Simulation:\n");
-    printf(" - Special PID 0: Kernel / Creator\n");
-    printf(" - Total User Processes: %d\n", total_processes_to_generate);
-    printf(" - Scheduling Mode: %s\n", (algo_choice == 1) ? "FIFO" : "Round Robin");
+    /*
+     * Start simulation.
+     */
 
-    run_simulation(algo_choice, total_processes_to_generate);
+    run_simulation();
+
 
     return 0;
 }
