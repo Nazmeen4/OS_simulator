@@ -39,6 +39,11 @@ Ensure your environment meets the following requirements before building or runn
 
 ## 🚀 Quick Start: Build & Run
 
+```cmd
+gcc main.c process.c scheduler.c simulator.c -o simulator.exe -lws2_32
+simulator.exe
+```
+
 Follow these commands to automatically create the output directory (if it doesn't exist), compile the simulator, and run it.
 
 ### 1. Build the Simulator
