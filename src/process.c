@@ -137,7 +137,7 @@ ScisSosProcess *ScisSosPCreator(int number_of_processes)
     pcb->pid = 0;
     pcb->uid = 0;
     pcb->size = number_of_processes;
-    pcb->priority_value = 0;
+    pcb->priority_value = 100; /* highest, so the creator is not starved under Priority */
     pcb->ps_state = PS_RDY;
     pcb->p_type = PT_REG;
     pcb->m_type = MT_GOOD;
@@ -179,7 +179,8 @@ int scissos_proc_run(int pid)
             char pname[MAXPROCNAME];
             sprintf(pname, "UserProc_%d", pcb->pc + 1);
 
-            int process_size = NUM_PROCESSES;
+            int sizes[] = {24000, 30000, 36000, 42000, 48000};
+            int process_size = sizes[rand() % 5];
             double r = (double)rand() / (double)RAND_MAX;
             int p_type;
 
@@ -211,7 +212,7 @@ int scissos_proc_run(int pid)
         return 0;
     }
 
-    if (pr_times[pid].rsp_time.tv_sec == 0 && pr_times[pid].rsp_time.tv_usec == 0)
+    if (pcb->pc == 0)
     {
         struct timeval now;
         gettimeofday(&now, NULL);

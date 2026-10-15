@@ -23,8 +23,9 @@ int gettimeofday(struct timeval *tp, void *tzp);
 #define EMPTY           -100
 #define MAXPGES         10
 #define DEFTS           200
-#define TOTAL_PROCESSES 20
-#define NUM_PROCESSES   24000 //Num of instructions
+#define TOTAL_PROCESSES 10   /* created over time by the creator (PID 0); keep < 20 */
+#define INITIAL_PROCESSES 10 /* created directly at start-up */
+#define NUM_PROCESSES   24000 //Num of instructions (minimum process size)
 #define REG_THR         0.02
 #define CMP_THR         0.001
 #define IOE_THR         0.2
@@ -36,7 +37,17 @@ int gettimeofday(struct timeval *tp, void *tzp);
  * 2 = Round Robin   sched_rr
  * 3 = Priority  sched_priority
  */
+#ifndef SCHED_ALGO
+#define SCHED_ALGO 3   /* override with: gcc -DSCHED_ALGO=2 ... */
+#endif
+
+#if SCHED_ALGO == 1
 #define SCHEDFUNC   sched_fifo
+#elif SCHED_ALGO == 2
+#define SCHEDFUNC   sched_rr
+#else
+#define SCHEDFUNC   sched_priority
+#endif
 
 #define PS_NEW  0
 #define PS_RDY  1
@@ -60,7 +71,7 @@ int gettimeofday(struct timeval *tp, void *tzp);
 #define MAX(A, B) (((A) > (B)) ? (A) : (B))
 #define MIN(A, B) (((A) < (B)) ? (A) : (B))
 
-#define FIFO_TS 24000
+#define FIFO_TS 48000   /* >= largest process size so FIFO runs to completion */
 
 typedef int ScisSosPGTable[2];
 
